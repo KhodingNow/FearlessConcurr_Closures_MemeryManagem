@@ -111,29 +111,29 @@ fn main() {
      //}
 
      // SCOPE from the lib
-     let mut a = vec![1, 2, 3];
-     let mut x = 0;
+     // let mut a = vec![1, 2, 3];
+     // let mut x = 0;
 
-     thread::scope(|s| {
-          s.spawn(|| {
-               println!("hello, Dolly, this is Rust, Dolly, i am glad to have you back, where you belong from the Std Library");
-               // We can borrow 'a' here.
-               dbg!(&a);
-          });
-          s.spawn(|| {
-               println!("You are looking swell, Dolly, I can tell Dolly, you keep blowing, from the second scoped thread");
-               // we can even mutably borrow 'x' here,
-               // bcs no other threads are using it.
+     // thread::scope(|s| {
+     //      s.spawn(|| {
+     //           println!("hello, Dolly, this is Rust, Dolly, i am glad to have you back, where you belong from the Std Library");
+     //           // We can borrow 'a' here.
+     //           dbg!(&a);
+     //      });
+     //      s.spawn(|| {
+     //           println!("You are looking swell, Dolly, I can tell Dolly, you keep blowing, from the second scoped thread");
+     //           // we can even mutably borrow 'x' here,
+     //           // bcs no other threads are using it.
                
-               x += a[0] + a[2];
-          });
-          println!("You keep going, you are still going strong, i can see the room swaying, and the band still playing, from the main thread");
-          println!("This is Satchmo Dolly, you keep blowing, you keep going, you are looking swell Dolly, Yeah we play the old favourite tunes, from way back..")
-     });
+     //           x += a[0] + a[2];
+     //      });
+     //      println!("You keep going, you are still going strong, i can see the room swaying, and the band still playing, from the main thread");
+     //      println!("This is Satchmo Dolly, you keep blowing, you keep going, you are looking swell Dolly, Yeah we play the old favourite tunes, from way back..")
+     // });
 
-     // After the scope, we can modify and access our variables again
-     a.push(4);
-     assert_eq!(x, a.len());
+     // // After the scope, we can modify and access our variables again
+     // a.push(4);
+     // assert_eq!(x, a.len());
 
 
      // LIFETIMES:
@@ -142,4 +142,96 @@ fn main() {
      // The 'scope LTime represents the lifetime of the scope itself
      // The 'env LTime reprsents the lifetime of whatever is borrowed by the scoped threads.
      // The 'env: 'scope bound is part of the definition of the Scope type. 
+
+     // ASYNCRONOUS prog
+     // Async, Await, Futures for Rust
+
+     // 1. Future Trait - represents an asyncronous computation that may complete later
+     // - defined in std ::future (or futures crate for extended functionality)
+     // - Output is retrieved via Poll (either Ready(T) or Pending)
+
+     use std::future::Future;
+     use std::pin::Pin;
+     use std::task::{Context, Poll};
+
+     struct MyFuture {
+          completed: bool,
+     }
+
+     impl Future for MyFuture {
+          type Output = i32;
+
+          fn poll(mut self: Pin<&mut Self>, _cx: &mut Context) -> Poll<Self::Output> {
+               if self.completed {
+                    Poll::Ready(42)
+               } else {
+                    self.completed = true;
+                    Poll::Pending
+               }
+          }
+     }
+
+     // 2. async/await Syntax
+     // - async: Transforms a block / code into a state machine that implements Future.
+     // - await: Suspends execution until a Future completes (without blocking the thread)
+     
+     // E.g
+
+     async fn fetch_data() -> i32 {
+          // Simulate async work (e.g, network call)
+          42
+     }
+
+     async fn process() {
+          let data = fetch_data().await; //Pause until fetch_data completes
+          println!("Data: {}", data);
+     }
+
+     // 3 Executors - asyncronous code requires an executor to drive Futures to completion...=> tokio or async-std API
+     #[tokio::main]
+     async fn() {
+          process().await;
+     }
+
+     // 4. Streams - similar to iterator, but yields values asyncronously
+     // - defined in futures::stream::Stream (or tokio_stream).
+     // - use next().await to fetch the next item.
+
+     // CREATING A Stream
+
+     use futures::stream::{self, StreamExt}; // Enable 'next()'
+
+     async fn count_stream() -> impl Stream<Item = i32> {
+          stream::iter(1..=5) // Syncronous iterator -> Stream
+     }
+
+     #[tokio::main]
+     async fn main() {
+          let mut stream = count_stream().await;
+          while let Some(num) = stream.next().await {
+          println!("Got: {}", num);
+
+          }
+     }
+
+     // Async Stream with async - stream:
+
+     use async_stream::stream;
+     use tokio_stream::Stream;
+
+     fn async_counter() -> impl Stream<Item = i32 {
+          stream! {
+               for i in 0..5 {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                    yield i;
+               }
+          }
+     }
+     
+     
+
+     
+
+
+
 }
