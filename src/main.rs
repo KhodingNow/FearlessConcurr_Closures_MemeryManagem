@@ -339,6 +339,43 @@ println!("recovered {} items", data.len());
 
 .......recovered 1 items
 
+
+What MIRI would see in this code?
+
+1. Mutex creation
+
+- Arc::new(Mutex::new(HashSet::new())) -> safe, heap alloc for HashSet
+
+2. Worker thread lock
+
+- Miri checks: lock acquired, no race
+- Guard returned safely
+
+3. Mutation
+
+- data.insert(10) mutably borrows the set
+- Miri checks borrowing rules -> all good
+- HashSet internally modifies its buckets (safe, no UB in Rust).
+
+4. Panic!()
+- Panic unwinds while guards is held.
+- Guard's destructor release the lock
+- Mutex poison flag is set
+- Miri validates that the lock release is correct
+
+5. Main thread lock attempt
+
+- Miri sees poisoned flag -> returns 1.
+- .into_inner() transfers ownership of the guard back to the caller
+- Miri confirms this is valid (data structure is intact)
+
+6. Length check
+
+- Safe read of HashSet length -> returns 1
+- Printed safely
+
+# Miri Verdic: No UB. Safe, deterministic poisoning + recovery
+
 */
 
 
